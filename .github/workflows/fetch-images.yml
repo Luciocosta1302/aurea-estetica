@@ -1,0 +1,95 @@
+name: Fetch stock images
+
+on:
+  push:
+    branches: [assets]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download images (first valid candidate per slot)
+        run: |
+          mkdir -p assets/img
+          fetch_slot() {
+            slot="$1"; shift
+            for url in "$@"; do
+              if curl -sfL --max-time 25 -o "/tmp/$slot" "$url"; then
+                type=$(file -b --mime-type "/tmp/$slot")
+                size=$(stat -c%s "/tmp/$slot")
+                if [[ "$type" == image/* && "$size" -gt 20000 ]]; then
+                  mv "/tmp/$slot" "assets/img/$slot.jpg"
+                  echo "OK   $slot <- $url ($size bytes)" | tee -a /tmp/manifest.txt
+                  return 0
+                fi
+              fi
+            done
+            echo "FAIL $slot (no valid candidate)" | tee -a /tmp/manifest.txt
+          }
+          U="q=80&auto=format&fit=crop"
+          P="auto=compress&cs=tinysrgb"
+          fetch_slot hero \
+            "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=1000&$U" \
+            "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=1000&$U" \
+            "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=1000&$U" \
+            "https://images.pexels.com/photos/5327585/pexels-photo-5327585.jpeg?w=1000&$P"
+          fetch_slot inj \
+            "https://images.unsplash.com/photo-1620331311520-246422fd82f9?w=800&$U" \
+            "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&$U" \
+            "https://images.pexels.com/photos/3985163/pexels-photo-3985163.jpeg?w=800&$P" \
+            "https://images.pexels.com/photos/4586733/pexels-photo-4586733.jpeg?w=800&$P"
+          fetch_slot serum \
+            "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=800&$U" \
+            "https://images.unsplash.com/photo-1560750588-73207b1ef5b8?w=800&$U" \
+            "https://images.pexels.com/photos/3762879/pexels-photo-3762879.jpeg?w=800&$P"
+          fetch_slot mask \
+            "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&$U" \
+            "https://images.pexels.com/photos/3764013/pexels-photo-3764013.jpeg?w=800&$P" \
+            "https://images.pexels.com/photos/3997993/pexels-photo-3997993.jpeg?w=800&$P"
+          fetch_slot guasha \
+            "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&$U" \
+            "https://images.pexels.com/photos/5069432/pexels-photo-5069432.jpeg?w=800&$P" \
+            "https://images.pexels.com/photos/6663571/pexels-photo-6663571.jpeg?w=800&$P"
+          fetch_slot spa \
+            "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=900&$U" \
+            "https://images.unsplash.com/photo-1600334129128-685c5582fd35?w=900&$U" \
+            "https://images.pexels.com/photos/3757952/pexels-photo-3757952.jpeg?w=900&$P"
+          fetch_slot body \
+            "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?w=800&$U" \
+            "https://images.pexels.com/photos/6187653/pexels-photo-6187653.jpeg?w=800&$P" \
+            "https://images.pexels.com/photos/5240677/pexels-photo-5240677.jpeg?w=800&$P"
+          fetch_slot towels \
+            "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=800&$U" \
+            "https://images.pexels.com/photos/3757657/pexels-photo-3757657.jpeg?w=800&$P"
+          fetch_slot peel \
+            "https://images.pexels.com/photos/3985360/pexels-photo-3985360.jpeg?w=800&$P" \
+            "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=800&$U" \
+            "https://images.pexels.com/photos/3997381/pexels-photo-3997381.jpeg?w=800&$P"
+          fetch_slot lips \
+            "https://images.pexels.com/photos/4620866/pexels-photo-4620866.jpeg?w=800&$P" \
+            "https://images.pexels.com/photos/13319178/pexels-photo-13319178.jpeg?w=800&$P" \
+            "https://images.pexels.com/photos/4508148/pexels-photo-4508148.jpeg?w=800&$P"
+          fetch_slot portrait \
+            "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=1100&$U" \
+            "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1100&$U"
+          fetch_slot clinic \
+            "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1000&$U" \
+            "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=1000&$U" \
+            "https://images.pexels.com/photos/7176026/pexels-photo-7176026.jpeg?w=1000&$P"
+          fetch_slot avatar1 "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&$U"
+          fetch_slot avatar2 "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&$U"
+          fetch_slot avatar3 "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&$U"
+          echo "===== MANIFEST ====="; cat /tmp/manifest.txt
+          cp /tmp/manifest.txt assets/img/manifest.txt
+      - name: Commit images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/img
+          git commit -m "assets: fotos baixadas e versionadas no repo" || echo "nothing to commit"
+          git push origin assets
